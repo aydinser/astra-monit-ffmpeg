@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Astra Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .hidden {
+        display: none;
+      }
+
+      body {
+        background-color: white;
+        color: #1a202c;
+      }
+
+      /* Modal styling */
+      .modal-backdrop {
+        background-color: rgba(0, 0, 0, 0.6);
+      }
+
+      .modal-content {
+        background-color: #fffdfd;
+        border-radius: 0.5rem;
+        border: 1px solid #5d6477;
+      }
+
+      /* Card styling */
+      .adapter-card {
+        border-radius: 0.25rem;
+        margin-bottom: 0.25rem;
+        overflow: hidden;
+      }
+
+      /* Adapter header */
+      .adapter-header {
+        background-color: #666e67;
+        padding: 0.75rem;
+        color: white;
+        font-weight: 500;
+      }
+
+      /* Signal strength bars */
+      .signal-strength-bar {
+        height: 15px;
+        background-color: rgba(255, 255, 255, 0.2);
+        overflow: hidden;
+        margin: 0;
+        border-radius: 4px;
+      }
+
+      .s-bar-fill {
+        height: 100%;
+        background: linear-gradient(to right, #ff4500, #ffff00, #4caf50);
+      }
+
+      .q-bar-fill {
+        height: 100%;
+        background: linear-gradient(to right, #4caf50, #4caf50);
+      }
+
+      /* Signal text values */
+      .signal-strength-value,
+      .quality-value {
+        font-size: 14px;
+        color: white;
+        font-weight: 600;
+        position: absolute;
+        right: 10px;
+      }
+
+      /* Channel styling */
+      .channel-item {
+        border: 1px solid #e9e1df;
+        transition: all 0.2s;
+        padding: 0.5rem;
+        color: #0a0a0b;
+        margin-bottom: 0.25rem;
+        border-radius: 0.25rem;
+        /* box-shadow: 0 4px 6px rgb(139 145 156 / 50%); */
+      }
+
+      .channel-item:hover {
+        background-color: #f0fff4;
+      }
+
+      /* Channel status indicator */
+      .channel-status {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 6px;
+      }
+
+      /* Bitrate animation */
+      .bitrate-update {
+        animation: pulse 0.5s ease;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 0.5;
+        }
+        50% {
+          color: #22c55e;
+          opacity: 1;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      /* Transcoding button enhanced styles */
+      .transcode-btn.active {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        font-weight: 600;
+      }
+
+      .transcode-btn.active::after {
+        content: "●";
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        color: #10b981;
+        font-size: 16px;
+        animation: pulse 2s infinite;
+      }
+
+      .transcode-btn:disabled {
+        opacity: 0.7;
+        cursor: wait;
+      }
+
+      /* URL container styles */
+      .rtmp-url-container {
+        background: rgba(124, 58, 237, 0.05);
+        border: 1px solid rgba(124, 58, 237, 0.2);
+        border-radius: 4px;
+        padding: 4px 6px;
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        transition: all 0.2s ease;
+      }
+
+      .rtmp-url {
+        font-family: monospace;
+        font-size: 10px;
+        color: #7c3aed;
+      }
+
+      .channel-url {
+        font-family: monospace;
+        font-size: 10px;
+        color: #3b82f6;
+        word-break: break-all;
+        white-space: normal;
+      }
+
+      .rtmp-url {
+        font-family: monospace;
+        font-size: 10px;
+        color: #7c3aed;
+        word-break: break-all;
+        white-space: normal;
+      }
+
+      .copy-rtmp-btn,
+      .copy-http-url,
+      .stop-transcode-btn {
+        padding: 2px 4px;
+        border-radius: 3px;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+      }
+
+      .copy-rtmp-btn:hover,
+      .copy-http-url:hover {
+        background-color: rgba(59, 130, 246, 0.1);
+      }
+
+      .stop-transcode-btn:hover {
+        background-color: rgba(239, 68, 68, 0.1);
+      }
+
+      .stop-transcode-btn span {
+        font-size: 10px;
+        margin-left: 2px;
+      }
+
+      .active-indicator {
+        height: 10px;
+        background: #10b981;
+        border-radius: 50%;
+        font-size: 6px;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+      }
+
+      .transcode-btn[data-quality="sd"].active {
+        background-color: #dbeafe !important;
+        border-color: #3b82f6 !important;
+        color: #1e40af !important;
+      }
+
+      .transcode-btn[data-quality="hd"].active {
+        background-color: #dcfce7 !important;
+        border-color: #10b981 !important;
+        color: #065f46 !important;
+      }
+
+      .transcode-btn[data-quality="ultrahd"].active {
+        background-color: #fdf4ff !important;
+        border-color: #a855f7 !important;
+        color: #7c2d12 !important;
+      }
+
+      /* Animations */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Scrollbar styling */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #1a1b23;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #3b3e4e;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #4a4e64;
+      }
+
+      /* Input styling */
+      input,
+      select,
+      textarea {
+        background-color: #eeeff0;
+        border: 1px solid #5d6477;
+        border-radius: 0.375rem;
+        color: white;
+        padding: 0.5rem;
+        outline: none;
+      }
+
+      input:focus,
+      select:focus,
+      textarea:focus {
+        border-color: #8294c4;
+      }
+
+      /* Button styles */
+      button.primary {
+        background-color: #3b82f6;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        font-weight: 500;
+      }
+
+      button.primary:hover {
+        background-color: #2563eb;
+      }
+
+      /* Grid layout for adapters */
+      .adapters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 0.25rem;
+      }
+
+      /* Channel bitrate styling */
+      .channel-bitrate {
+        display: block;
+        font-size: 0.5rem;
+        color: #82c3a0;
+        margin-top: 0.25rem;
+      }
+
+      .channel-bitrate.inactive {
+        color: #a0aec0;
+        font-style: italic;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container mx-auto py-6 px-4">
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-3xl font-bold">Astra Yönetim Paneli</h1>
+
+        <div class="flex space-x-3">
+          <button
+            id="refreshBtn"
+            class="px-4 py-2 bg-sky-600 hover:bg-sky-700 rounded-md text-white flex items-center"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-4 w-4 mr-1"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            Yenile
+          </button>
+          <button
+            id="openAdapterFormBtn"
+            class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-md text-white flex items-center"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-4 w-4 mr-1"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
+            </svg>
+            Yeni Adapter Ekle
+          </button>
+        </div>
+      </div>
+
+      <!-- Adapters grid container -->
+      <div class="adapters-grid" id="adaptersContainer">
+        <!-- Adapters will be inserted here dynamically -->
+      </div>
+
+      <!-- Adapter Form Modal -->
+      <div
+        id="adapterFormModal"
+        class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 hidden"
+      >
+        <div class="modal-content p-6 w-[500px] max-w-full">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">Yeni Adapter Oluştur</h2>
+            <button
+              id="closeAdapterFormBtn"
+              class="text-gray-500 hover:text-gray-300"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <form id="createAdapterForm" class="space-y-4">
+            <div>
+              <label class="text-sm font-medium">Adapter İsmi</label>
+              <input
+                id="adapterName"
+                required
+                class="mt-1 w-full"
+                placeholder="ör. sterktvnu"
+              />
+            </div>
+
+            <div>
+              <label class="text-sm font-medium">Adapter (Sistem)</label>
+              <select id="adapterNumber" required class="mt-1 w-full">
+                <option value="">Yükleniyor...</option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="text-sm font-medium">Frekans (MHz)</label>
+                <input
+                  id="frequency"
+                  required
+                  class="mt-1 w-full"
+                  placeholder="12520"
+                />
+              </div>
+              <div>
+                <label class="text-sm font-medium">Symbol Rate</label>
+                <input
+                  id="symbol"
+                  required
+                  class="mt-1 w-full"
+                  placeholder="27500"
+                />
+              </div>
+              <div>
+                <label class="text-sm font-medium">Polarizasyon</label>
+                <select id="pol" class="mt-1 w-full">
+                  <option value="H">H</option>
+                  <option value="V" selected>V</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+              <button type="submit" class="primary">Adapter Oluştur</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Channel Form Modal -->
+      <div
+        id="channelModal"
+        class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 hidden"
+      >
+        <div class="modal-content p-6 w-[500px] max-w-full">
+          <div class="flex justify-between items-center mb-4">
+            <h2 id="channelModalTitle" class="text-xl font-semibold">
+              Kanal Ekle
+            </h2>
+            <button
+              id="closeChannelModal"
+              class="text-gray-500 hover:text-gray-300"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <form id="channelForm" class="space-y-4">
+            <!-- Hidden fields for adapter data -->
+            <input type="hidden" id="channelAdapterName" />
+            <input type="hidden" id="channelAdapterNum" />
+            <input type="hidden" id="editChannelName" />
+
+            <div>
+              <label class="text-sm font-medium">Kanal Adı</label>
+              <input
+                id="channelName"
+                required
+                class="mt-1 w-full"
+                placeholder="Kanal adı"
+              />
+            </div>
+
+            <div>
+              <label class="text-sm font-medium">PNR</label>
+              <input
+                id="channelPnr"
+                required
+                class="mt-1 w-full"
+                placeholder="ör. 1111"
+              />
+            </div>
+
+            <div>
+              <label class="text-sm font-medium">Port</label>
+              <input
+                id="channelPort"
+                required
+                class="mt-1 w-full"
+                placeholder="ör. 5555"
+              />
+            </div>
+
+            <div>
+              <label class="text-sm font-medium">Path</label>
+              <input
+                id="channelPath"
+                required
+                class="mt-1 w-full"
+                placeholder="/stream-path"
+              />
+            </div>
+
+            <div class="flex justify-end pt-2">
+              <button type="submit" class="primary">
+                <span id="channelSubmitText">Ekle</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Templates -->
+
+    <!-- Adapter Card Template -->
+    <template id="adapter-card-template">
+      <div class="adapter-card">
+        <!-- Adapter header -->
+        <div class="adapter-header">
+          <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center">
+              <h3 class="text-lg font-bold adapter-title mr-2"></h3>
+              <button
+                class="add-channel-btn p-1 text-white hover:text-yellow-200"
+                title="Kanal Ekle"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div class="flex space-x-1">
+              <button
+                class="edit-btn text-white hover:text-yellow-200"
+                title="Düzenle"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+              </button>
+              <button
+                class="delete-btn text-white hover:text-red-300"
+                title="Sil"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Adapter details below the title -->
+          <div class="text-sm text-white opacity-90 adapter-details mb-2"></div>
+
+          <!-- Signal strength bars -->
+          <div class="relative mt-2">
+            <div class="flex items-center relative">
+              <span class="text-white font-medium ml-1 absolute left-1">S</span>
+              <div class="signal-strength-bar w-full">
+                <div class="s-bar-fill" style="width: 0%"></div>
+              </div>
+              <span class="signal-strength-value">0%</span>
+            </div>
+
+            <div class="flex items-center relative">
+              <span class="text-white font-medium ml-1 absolute left-1">Q</span>
+              <div class="signal-strength-bar w-full">
+                <div class="q-bar-fill" style="width: 0%"></div>
+              </div>
+              <span class="quality-value">0%</span>
+            </div>
+
+            <div class="flex justify-start text-xs text-white opacity-75 pl-1">
+              <span class="ber-value mr-2">ber:0</span>
+              <span class="unc-value">unc:0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Channels container -->
+        <div class="channels-container p-1">
+          <!-- Channel items will be inserted here -->
+        </div>
+      </div>
+    </template>
+
+    <!-- Channel Item Template -->
+    <template id="channel-item-template">
+      <div class="channel-item p-3">
+        <div class="flex justify-between items-start">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center">
+              <div class="channel-status bg-gray-400 mr-2"></div>
+              <div class="font-medium channel-name"></div>
+            </div>
+            <div class="text-xs text-gray-600 mt-1 channel-url truncate"></div>
+
+            <!-- Transcoding Quality Buttons -->
+            <div class="mt-3 flex gap-2">
+              <button
+                class="transcode-btn group relative flex items-center gap-1 px-3 py-2 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 shadow-sm"
+                data-quality="sd"
+              >
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"
+                  ></path>
+                </svg>
+                SD
+                <div
+                  class="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                ></div>
+              </button>
+
+              <button
+                class="transcode-btn group relative flex items-center gap-1 px-3 py-2 text-xs font-semibold text-green-600 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 hover:border-green-300 transition-all duration-200 shadow-sm"
+                data-quality="hd"
+              >
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"
+                  ></path>
+                </svg>
+                HD
+                <div
+                  class="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                ></div>
+              </button>
+
+              <button
+                class="transcode-btn group relative flex items-center gap-1 px-3 py-2 text-xs font-semibold text-purple-600 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 hover:border-purple-300 transition-all duration-200 shadow-sm"
+                data-quality="ultrahd"
+              >
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fill-rule="evenodd"
+                    d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l2.293 2.293a1 1 0 01-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 1a1 1 0 010-2h4a1 1 0 011 1v4a1 1 0 01-2 0V6.414l-2.293 2.293a1 1 0 11-1.414-1.414L13.586 5H12zm-9 7a1 1 0 012 0v1.586l2.293-2.293a1 1 0 111.414 1.414L6.414 15H8a1 1 0 010 2H4a1 1 0 01-1-1v-4zm13-1a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 010-2h1.586l-2.293-2.293a1 1 0 111.414-1.414L15 13.586V12a1 1 0 011-1z"
+                    clip-rule="evenodd"
+                  ></path>
+                </svg>
+                4K
+                <div
+                  class="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                ></div>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex space-x-1">
+            <button class="edit-channel-btn text-blue-600" title="Düzenle">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </button>
+            <button class="delete-channel-btn text-red-500" title="Sil">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
